@@ -71,10 +71,10 @@ fn handle_panics<F: FnOnce() -> Result<(), String> + panic::UnwindSafe>(data: Da
 }
 
 unsafe fn convert_c_str<'a>(ptr: *const c_char) -> Result<&'a str, String> {
-    unsafe { CStr::from_ptr(ptr) }.to_str().map_err(|err| format!("invalid areas file: {err}"))
+    CStr::from_ptr(ptr).to_str().map_err(|err| format!("invalid areas file: {err}"))
 }
 unsafe fn convert_c_vec<'a, T>(raw_vec: RawVec<T>) -> &'a [T] {
-    unsafe { slice::from_raw_parts(raw_vec.data, raw_vec.len as usize) }
+    slice::from_raw_parts(raw_vec.data, raw_vec.len as usize)
 }
 
 #[no_mangle]
