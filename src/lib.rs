@@ -2,12 +2,12 @@ use std::slice;
 use std::ffi::{CString, CStr};
 use std::panic;
 
-use cty::{c_char, c_int, c_void};
+use cty::{c_char, c_int, c_float, c_void};
 
 use wotw_seedgen::settings::UniverseSettings;
 use wotw_seedgen::logic;
 use wotw_seedgen::Inventory;
-use wotw_seedgen::item::{Item, Skill, Teleporter, Shard};
+use wotw_seedgen::item::{Item, Skill, Teleporter, Shard, Resource};
 
 #[repr(C)]
 #[derive(Clone, Copy)]
@@ -18,6 +18,11 @@ pub struct RawVec<T> {
 
 #[repr(C)]
 pub struct Input {
+    health: c_float,
+    energy: c_float,
+    gorlek_ore: c_int,
+    keystone: c_int,
+    shard_slot: c_int,
     skills: RawVec<c_int>,
     teleporters: RawVec<c_int>,
     shards: RawVec<c_int>,
@@ -76,16 +81,7 @@ unsafe fn convert_c_vec<'a, T>(raw_vec: RawVec<T>) -> &'a [T] {
 pub extern "C" fn reach_check(input: &Input, data: Data, functions: &Functions) -> Status {
     handle_panics(data, functions, || {
         unsafe {
-            let mut inventory = Inventory::default();
-            for skill in convert_c_vec(input.skills) {
-                inventory.grant(Item::Skill(Skill::try_from(*skill as u8).map_err(|_| format!("Invalid skill id {skill}"))?), 1);
-            }
-            for teleporter in convert_c_vec(input.teleporters) {
-                inventory.grant(Item::Teleporter(Teleporter::try_from(*teleporter as u8).map_err(|_| format!("Invalid teleporter id {teleporter}"))?), 1);
-            }
-            for shard in convert_c_vec(input.shards) {
-                inventory.grant(Item::Shard(Shard::try_from(*shard as u8).map_err(|_| format!("Invalid shard id {shard}"))?), 1);
-            }
+            let inventory = create_inventory(&input)?;
 
             let nodes = convert_c_vec(input.nodes).into_iter()
                 .map(|ptr| convert_c_str(*ptr)).collect::<Result<Vec<_>, _>>()?
@@ -107,4 +103,26 @@ pub extern "C" fn reach_check(input: &Input, data: Data, functions: &Functions) 
         }
         Ok(())
     })
+}
+
+unsafe fn create_inventory(input: &Input) -> Result<Inventory, String> {
+    let mut inventory = Inventory::default();
+
+    inventory.grant(Item::Resource(Resource::Health), (input.health / 5.0) as u32);
+    inventory.grant(Item::Resource(Resource::Energy), (input.energy * 2.0) as u32);
+    inventory.grant(Item::Resource(Resource::Ore), input.gorlek_ore.try_into().map_err(|_| format!("invalid gorlek ore amount {}", input.gorlek_ore))?);
+    inventory.grant(Item::Resource(Resource::Keystone), input.keystone.try_into().map_err(|_| format!("invalid keystone amount {}", input.keystone))?);
+    inventory.grant(Item::Resource(Resource::ShardSlot), input.shard_slot.try_into().map_err(|_| format!("invalid shard slot amount {}", input.shard_slot))?);
+
+    for skill in convert_c_vec(input.skills) {
+        inventory.grant(Item::Skill(Skill::try_from(*skill as u8).map_err(|_| format!("Invalid skill id {skill}"))?), 1);
+    }
+    for teleporter in convert_c_vec(input.teleporters) {
+        inventory.grant(Item::Teleporter(Teleporter::try_from(*teleporter as u8).map_err(|_| format!("Invalid teleporter id {teleporter}"))?), 1);
+    }
+    for shard in convert_c_vec(input.shards) {
+        inventory.grant(Item::Shard(Shard::try_from(*shard as u8).map_err(|_| format!("Invalid shard id {shard}"))?), 1);
+    }
+
+    Ok(inventory)
 }
