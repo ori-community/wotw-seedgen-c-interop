@@ -23,6 +23,7 @@ pub struct Input {
     gorlek_ore: c_int,
     keystone: c_int,
     shard_slot: c_int,
+    clean_water: c_char,
     skills: RawVec<c_int>,
     teleporters: RawVec<c_int>,
     shards: RawVec<c_int>,
@@ -108,11 +109,15 @@ pub extern "C" fn reach_check(input: &Input, data: Data, functions: &Functions) 
 unsafe fn create_inventory(input: &Input) -> Result<Inventory, String> {
     let mut inventory = Inventory::default();
 
-    inventory.grant(Item::Resource(Resource::Health), (input.health / 5.0) as u32);
-    inventory.grant(Item::Resource(Resource::Energy), (input.energy * 2.0) as u32);
-    inventory.grant(Item::Resource(Resource::Ore), input.gorlek_ore.try_into().map_err(|_| format!("invalid gorlek ore amount {}", input.gorlek_ore))?);
+    inventory.grant(Item::Resource(Resource::HealthFragment), (input.health / 5.0) as u32);
+    inventory.grant(Item::Resource(Resource::EnergyFragment), (input.energy * 2.0) as u32);
+    inventory.grant(Item::Resource(Resource::GorlekOre), input.gorlek_ore.try_into().map_err(|_| format!("invalid gorlek ore amount {}", input.gorlek_ore))?);
     inventory.grant(Item::Resource(Resource::Keystone), input.keystone.try_into().map_err(|_| format!("invalid keystone amount {}", input.keystone))?);
     inventory.grant(Item::Resource(Resource::ShardSlot), input.shard_slot.try_into().map_err(|_| format!("invalid shard slot amount {}", input.shard_slot))?);
+
+    if input.clean_water == 1 {
+        inventory.grant(Item::Water, 1);
+    }
 
     for skill in convert_c_vec(input.skills) {
         inventory.grant(Item::Skill(Skill::try_from(*skill as u8).map_err(|_| format!("Invalid skill id {skill}"))?), 1);
