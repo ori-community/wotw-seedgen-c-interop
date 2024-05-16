@@ -20,6 +20,7 @@ pub struct RawVec<T> {
 pub struct Input {
     health: c_float,
     energy: c_float,
+    spirit_light: c_int,
     gorlek_ore: c_int,
     keystone: c_int,
     shard_slot: c_int,
@@ -111,6 +112,7 @@ unsafe fn create_inventory(input: &Input) -> Result<Inventory, String> {
 
     inventory.grant(Item::Resource(Resource::HealthFragment), (input.health / 5.0) as u32);
     inventory.grant(Item::Resource(Resource::EnergyFragment), (input.energy * 2.0) as u32);
+    inventory.grant(Item::SpiritLight(1), input.spirit_light.try_into().map_err(|_| format!("invalid spirit light amount {}", input.spirit_light))?);
     inventory.grant(Item::Resource(Resource::GorlekOre), input.gorlek_ore.try_into().map_err(|_| format!("invalid gorlek ore amount {}", input.gorlek_ore))?);
     inventory.grant(Item::Resource(Resource::Keystone), input.keystone.try_into().map_err(|_| format!("invalid keystone amount {}", input.keystone))?);
     inventory.grant(Item::Resource(Resource::ShardSlot), input.shard_slot.try_into().map_err(|_| format!("invalid shard slot amount {}", input.shard_slot))?);
