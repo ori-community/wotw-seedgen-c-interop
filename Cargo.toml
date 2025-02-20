@@ -7,5 +7,5 @@ edition = "2021"
 crate-type = ["cdylib"]
 
 [dependencies]
-wotw_seedgen = { git = "https://github.com/ori-community/wotw-seedgen.git", branch = "entrance_randomizer" }
+wotw_seedgen = { git = "https://github.com/ori-community/wotw-seedgen.git", branch = "dev" }
 cty = "0.2"
