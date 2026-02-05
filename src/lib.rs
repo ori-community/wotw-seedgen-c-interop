@@ -9,7 +9,7 @@ use wotw_seedgen::logic;
 use wotw_seedgen::Inventory;
 use wotw_seedgen::item::{Item, Skill, Teleporter, Shard, Resource};
 use wotw_seedgen::uber_state::UberStateComparator;
-use wotw_seedgen::world::graph::Node;
+use wotw_seedgen::world::graph::{Node, Quest, State};
 
 #[repr(C)]
 #[derive(Clone, Copy)]
@@ -49,8 +49,8 @@ trait HandlesErrors {
 
 #[repr(C)]
 pub struct ReachCheckFunctions {
-    push_error: extern fn(data: Data, string: *const c_char),
-    push_reached: extern fn(data: Data, string: *const c_char),
+    push_error: extern "C" fn(data: Data, string: *const c_char),
+    push_reached: extern "C" fn(data: Data, string: *const c_char),
 }
 
 impl ReachCheckFunctions {
@@ -69,8 +69,8 @@ impl HandlesErrors for ReachCheckFunctions {
 
 #[repr(C)]
 pub struct GetStatesFunctions {
-    push_error: extern fn(data: Data, string: *const c_char),
-    push_state: extern fn(data: Data, name: *const c_char, uber_group: i32, uber_state: i32, value: i32, op: i32),
+    push_error: extern "C" fn(data: Data, string: *const c_char),
+    push_state: extern "C" fn(data: Data, name: *const c_char, uber_group: i32, uber_state: i32, value: i32, op: i32),
 }
 
 impl GetStatesFunctions {
@@ -161,13 +161,18 @@ pub extern "C" fn get_states(input: &SeedgenInput, data: Data, functions: &GetSt
 
             for node in graph.nodes {
                 match node {
-                    Node::State(state) => {
-                        if state.trigger.is_none() {
-                            continue;
-                        }
-
-                        let identifier = CString::new(state.identifier).map_err(|err| format!("failed to convert state identifier: {err}"))?;
-                        let trigger = state.trigger.unwrap();
+                    Node::State(State {
+                        identifier,
+                        trigger: Some(trigger),
+                        ..
+                    })
+                    | Node::Quest(Quest {
+                        identifier,
+                        trigger,
+                        ..
+                    }) => {
+                        let identifier = CString::new(identifier)
+                            .map_err(|err| format!("failed to convert state identifier: {err}"))?;
 
                         if let Some(condition) = trigger.condition {
                             functions.push_state(
